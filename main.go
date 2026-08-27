@@ -42,6 +42,7 @@ type config struct {
 	partsDir     string
 	localFabrica string
 	fabrica      string
+	auth         bool
 	force        bool
 	tidy         bool
 	resources    []resourceSpec
@@ -119,6 +120,7 @@ func parseFlags() (*config, error) {
 		resourcesDir = flag.String("resources", "", "directory of parts files; the *Spec struct in each .go file names the resource")
 		localFabrica = flag.String("local-fabrica", "", "if set, append a replace directive for github.com/openchami/fabrica pointing here")
 		fabrica      = flag.String("fabrica", "fabrica", "path to the fabrica binary")
+		auth         = flag.Bool("auth", false, "enable authentication with TokenSmith")
 		force        = flag.Bool("force", false, "proceed even if the project directory already exists")
 		tidy         = flag.Bool("tidy", true, "run 'go mod tidy' at the end")
 		res          stringSlice
@@ -156,6 +158,7 @@ func parseFlags() (*config, error) {
 		partsDir:     *partsDir,
 		localFabrica: *localFabrica,
 		fabrica:      *fabrica,
+		auth:         *auth,
 		force:        *force,
 		tidy:         *tidy,
 	}
@@ -282,12 +285,16 @@ func checkProjectDir(cfg *config) error {
 func projectDir(cfg *config) string { return filepath.Join(cfg.dir, cfg.name) }
 
 func fabricaInit(cfg *config) error {
-	return runCmd(cfg.dir, cfg.fabrica, "init", cfg.name,
+	args := []string{"init", cfg.name,
 		"--module", cfg.module,
 		"--group", cfg.group,
 		"--storage-version", "v1",
 		"--storage-type", "ent",
-		"--db", cfg.db)
+		"--db", cfg.db}
+	if cfg.auth {
+		args = append(args, "--auth")
+	}
+	return runCmd(cfg.dir, cfg.fabrica, args...)
 }
 
 // appendReplace adds a replace directive for the local fabrica checkout.
